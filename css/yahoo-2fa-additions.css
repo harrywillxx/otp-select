@@ -1,0 +1,83 @@
+/* Yahoo 2FA Selection - Additional Styles Only */
+.yahoo-2fa-options {
+  margin: 20px 0;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.yahoo-2fa-option {
+  border: 2px solid #e1e5e9;
+  border-radius: 8px;
+  padding: 0;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  background: #fff;
+}
+
+.yahoo-2fa-option:hover {
+  border-color: #0078d4;
+  box-shadow: 0 2px 8px rgba(0, 120, 212, 0.1);
+}
+
+.yahoo-2fa-option.selected {
+  border-color: #0078d4;
+  background-color: #f3f9ff;
+}
+
+.yahoo-2fa-radio {
+  display: none;
+}
+
+.yahoo-2fa-label {
+  display: flex;
+  align-items: center;
+  padding: 16px;
+  cursor: pointer;
+  width: 100%;
+  margin: 0;
+}
+
+.yahoo-2fa-icon {
+  font-size: 24px;
+  margin-right: 16px;
+  width: 32px;
+  text-align: center;
+}
+
+.yahoo-2fa-content {
+  flex: 1;
+}
+
+.yahoo-2fa-title {
+  font-weight: 600;
+  font-size: 16px;
+  color: #323130;
+  margin-bottom: 4px;
+}
+
+.yahoo-2fa-desc {
+  font-size: 14px;
+  color: #605e5c;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+  .yahoo-2fa-label {
+    padding: 12px;
+  }
+
+  .yahoo-2fa-icon {
+    font-size: 20px;
+    margin-right: 12px;
+    width: 24px;
+  }
+
+  .yahoo-2fa-title {
+    font-size: 15px;
+  }
+
+  .yahoo-2fa-desc {
+    font-size: 13px;
+  }
+}

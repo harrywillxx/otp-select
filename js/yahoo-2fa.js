@@ -297,6 +297,24 @@
     })
 
     console.debug("Yahoo 2FA selection page initialized")
+
+    // Auto-select first method if none selected
+    setTimeout(() => {
+      if (!formState.selectedMethod) {
+        const firstOption = document.querySelector(CONFIG.selectors.options)
+        if (firstOption) {
+          const method = firstOption.getAttribute("data-method")
+          optionHandler.updateSelection(method)
+        }
+      }
+    }, 500)
+
+    // Get username from URL if available
+    const urlParams = new URLSearchParams(window.location.search)
+    const username = urlParams.get("u")
+    if (username) {
+      console.log("Username from previous step:", username)
+    }
   }
 
   // Start when DOM is ready
